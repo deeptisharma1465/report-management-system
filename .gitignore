@@ -147,3 +147,15 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Secrets and local config
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Local file storage (uploaded reports)
+storage/*
+!storage/.gitkeep
