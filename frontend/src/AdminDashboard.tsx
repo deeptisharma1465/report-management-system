@@ -36,12 +36,7 @@ function AdminDashboard({
     { name: 'Audit Logs', icon: '◷' },
   ]
 
-  const stats = [
-    { title: 'Total Reports', value: '—', icon: '▤' },
-    { title: 'Total Users', value: '—', icon: '♙' },
-    { title: 'Total Agencies', value: '—', icon: '▦' },
-    { title: 'Recent Activity', value: '—', icon: '◷' },
-  ]
+  
 
 useEffect(() => {
   if (!token) return

@@ -23,6 +23,13 @@ class ReportResponse(BaseModel):
     agency_id: int
     uploaded_by: int
     is_deleted: bool
+
+    original_filename: str | None = None
+    stored_filename: str | None = None
+    file_path: str | None = None
+    content_type: str | None = None
+    file_size: int | None = None
+
     created_at: datetime
     updated_at: datetime
 

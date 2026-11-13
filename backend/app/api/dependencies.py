@@ -3,7 +3,7 @@ from typing import Annotated
 
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
@@ -11,11 +11,13 @@ from app.db.session import get_db
 from app.models import User
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
-
+bearer_scheme = HTTPBearer()
 
 def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    credentials: Annotated[
+        HTTPAuthorizationCredentials,
+        Depends(bearer_scheme),
+    ],
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
     credentials_error = HTTPException(
@@ -25,6 +27,7 @@ def get_current_user(
     )
 
     try:
+        token = credentials.credentials
         payload = decode_access_token(token)
         subject = payload.get("sub")
 
@@ -32,6 +35,7 @@ def get_current_user(
             raise credentials_error
 
         user_id = int(subject)
+
     except (jwt.InvalidTokenError, ValueError):
         raise credentials_error
 

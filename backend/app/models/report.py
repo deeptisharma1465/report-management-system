@@ -1,7 +1,16 @@
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -22,6 +31,23 @@ class Report(Base):
     )
     uploaded_by: Mapped[int] = mapped_column(
         ForeignKey("users.id"), nullable=False
+    )
+
+    # Uploaded document information
+    original_filename: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    stored_filename: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    file_path: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    content_type: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    file_size: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
     )
 
     is_deleted: Mapped[bool] = mapped_column(

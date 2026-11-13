@@ -55,7 +55,7 @@ function DashboardPreview() {
       {role === 'admin' ? (
         <AdminDashboard userName="Aditi" />
       ) : (
-        <UserDashboard userName="Aditi" />
+        <UserDashboard userName="Aditi" token="" agencyId={1} />
       )}
     </>
   )

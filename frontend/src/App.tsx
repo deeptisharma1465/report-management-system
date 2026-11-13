@@ -22,7 +22,7 @@ function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [agencyId, setAgencyId] = useState('')
+  // const [agencyId, setAgencyId] = useState('')
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -73,7 +73,7 @@ function App() {
         setSuccess('Account created successfully! Please sign in.')
         setIsLogin(true)
         setPassword('')
-        setAgencyId('')
+
       }
     } catch (err) {
       setError(
