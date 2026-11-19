@@ -27,25 +27,28 @@ Header format:
 | View own account details | Yes | Yes |
 | Check administrator access | Yes | No |
 | Create agencies | Yes | No |
-| List agencies | Yes | No |
+| List agencies | Yes | Yes |
 | Update agencies | Yes | No |
 | List users | Yes | No |
 | View a user's details | Yes | No |
 | Update user role, agency, or active status | Yes | No |
-| Create reports | Subject to agency access rules | Only within the assigned agency |
-| List reports | According to report access rules | Reports restricted to the assigned agency |
-| View an individual report | Subject to agency access rules | Only if permitted for the assigned agency |
+| Create reports | Yes | Yes, for any existing agency |
+| List reports | All reports | Reports uploaded by the user |
+| View an individual report | All reports | Only reports uploaded by the user |
+| Search reports | All reports | Only reports uploaded by the user |
 | Update report metadata | Yes | No |
 | Soft-delete reports | Yes | No |
 | Create report version metadata | Yes | No |
 | List report versions | Yes | No |
 | View audit logs | Yes | No |
 
-## Agency Isolation
+## Report Access
 
-Regular users must not access reports belonging to another agency.
+Regular users can select an existing agency when uploading a report. They can
+list, search, view, and download only reports they uploaded. Administrators can
+access reports across agencies.
 
-The backend applies agency-access checks when handling report operations. Report listing also excludes soft-deleted reports.
+Report listing and search exclude soft-deleted reports.
 
 ## Audit Logging
 
@@ -72,4 +75,6 @@ Audit-log access is restricted to administrators.
 
 ## Scope
 
-These permissions cover the current backend functionality. Any future endpoint must enforce authentication, role permissions, and agency-level access where applicable.
+These permissions cover the current backend functionality. Any future endpoint
+must enforce authentication, role permissions, and report ownership or
+administrator access where applicable.

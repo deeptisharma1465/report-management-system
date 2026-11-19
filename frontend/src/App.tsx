@@ -22,7 +22,6 @@ function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  // const [agencyId, setAgencyId] = useState('')
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [error, setError] = useState('')
@@ -40,13 +39,7 @@ function App() {
 
       const body = isLogin
         ? { email, password }
-        : {
-            name,
-            email,
-            password,
-            // agency_id: Number(agencyId),
-            agency_id: 1,
-          }
+        : { name, email, password }
 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
@@ -73,7 +66,6 @@ function App() {
         setSuccess('Account created successfully! Please sign in.')
         setIsLogin(true)
         setPassword('')
-
       }
     } catch (err) {
       setError(
@@ -114,7 +106,6 @@ if (user && token) {
   <UserDashboard
     userName={user.name}
     token={token}
-    agencyId={user.agency_id!}
     onLogout={handleLogout}
   />
 )
@@ -222,19 +213,6 @@ if (user && token) {
                   />
                 </div>
 
-                {/* <div className="field">
-                  <label htmlFor="agencyId">Agency ID</label>
-                  <input
-                    id="agencyId"
-                    type="number"
-                    placeholder="Enter your assigned agency ID"
-                    value={agencyId}
-                    onChange={(event) => setAgencyId(event.target.value)}
-                    min={1}
-                    required
-                  />
-                  <small>Ask your administrator for a valid agency ID.</small>
-                </div> */}
               </>
             )}
 
@@ -328,7 +306,7 @@ if (user && token) {
 
           <p className="privacy-note">
             Access to reports is protected by account permissions
-            and agency-level restrictions.
+            and report ownership.
           </p>
         </div>
 

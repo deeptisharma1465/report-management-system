@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.api.dependencies import get_current_user, require_admin
 from app.db.session import get_db
-from app.models import Report, User
+from app.models import Agency, Report, User
 from sqlalchemy import select
 from app.api.routes.reports import list_reports
 
@@ -34,7 +34,7 @@ def test_admin_endpoint_rejects_non_admin_user() -> None:
         app.dependency_overrides.clear()
 
 
-def test_user_cannot_view_report_from_another_agency() -> None:
+def test_user_cannot_view_report_uploaded_by_another_user() -> None:
     normal_user = User(
         id=1,
         name="Test User",
@@ -42,7 +42,7 @@ def test_user_cannot_view_report_from_another_agency() -> None:
         hashed_password="not-used",
         role="user",
         is_active=True,
-        agency_id=1,
+        agency_id=None,
     )
 
     private_report = Report(
@@ -52,7 +52,7 @@ def test_user_cannot_view_report_from_another_agency() -> None:
         report_type="Testing",
         report_date=date(2026, 10, 23),
         agency_id=2,
-        uploaded_by=1,
+        uploaded_by=2,
         is_deleted=False,
     )
 
@@ -75,7 +75,7 @@ def test_user_cannot_view_report_from_another_agency() -> None:
         app.dependency_overrides.clear()
 
 
-def test_user_cannot_create_report_for_another_agency() -> None:
+def test_list_reports_filters_by_uploader() -> None:
     normal_user = User(
         id=1,
         name="Test User",
@@ -83,40 +83,7 @@ def test_user_cannot_create_report_for_another_agency() -> None:
         hashed_password="not-used",
         role="user",
         is_active=True,
-        agency_id=1,
-    )
-
-    app.dependency_overrides[get_current_user] = lambda: normal_user
-
-    try:
-        response = client.post(
-            "/api/reports",
-            json={
-                "title": "Unauthorized Test Report",
-                "description": "Test only",
-                "report_type": "Testing",
-                "report_date": "2026-10-23",
-                "agency_id": 2,
-            },
-        )
-
-        assert response.status_code == 403
-        assert response.json()["detail"] == (
-            "You do not have access to this agency."
-        )
-    finally:
-        app.dependency_overrides.clear()
-
-
-def test_list_reports_filters_by_user_agency() -> None:
-    normal_user = User(
-        id=1,
-        name="Test User",
-        email="testuser@example.com",
-        hashed_password="not-used",
-        role="user",
-        is_active=True,
-        agency_id=1,
+        agency_id=None,
     )
 
     class FakeScalars:
@@ -136,7 +103,7 @@ def test_list_reports_filters_by_user_agency() -> None:
     class FakeDB:
         def scalars(self, query):
             sql = str(query)
-            assert "reports.agency_id" in sql
+            assert "reports.uploaded_by" in sql
             assert "reports.is_deleted" in sql
             return FakeScalars()
 
@@ -145,6 +112,40 @@ def test_list_reports_filters_by_user_agency() -> None:
     assert len(result) == 1
     assert result[0].agency_id == 1
     assert result[0].title == "Agency One Report"
+
+
+def test_authenticated_user_can_list_agencies() -> None:
+    normal_user = User(
+        id=1,
+        name="Test User",
+        email="testuser@example.com",
+        hashed_password="not-used",
+        role="user",
+        is_active=True,
+        agency_id=None,
+    )
+    agency = Agency(id=3, name="Test Agency", description=None)
+
+    class FakeScalars:
+        def all(self):
+            return [agency]
+
+    class FakeDB:
+        def scalars(self, query):
+            return FakeScalars()
+
+    app.dependency_overrides[get_current_user] = lambda: normal_user
+    app.dependency_overrides[get_db] = lambda: FakeDB()
+
+    try:
+        response = client.get("/api/agencies")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {"id": 3, "name": "Test Agency", "description": None}
+    ]
 
 
 def test_list_reports_excludes_deleted_reports() -> None:

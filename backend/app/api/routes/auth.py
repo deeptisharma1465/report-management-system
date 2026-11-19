@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models import Agency, User
+from app.models import User
 from app.schemas.auth import RegisterRequest, UserResponse
 from app.core.security import hash_password
 from app.schemas.auth import LoginRequest, TokenResponse
@@ -34,21 +34,12 @@ def register_user(
             detail="An account with this email already exists.",
         )
 
-    agency = db.get(Agency, request.agency_id)
-
-    if agency is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Agency not found.",
-        )
-
     user = User(
         name=request.name,
         email=str(request.email).lower(),
         hashed_password=hash_password(request.password),
         role="user",
         is_active=True,
-        agency_id=agency.id,
     )
 
     db.add(user)

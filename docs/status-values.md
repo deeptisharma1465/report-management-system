@@ -7,7 +7,7 @@ The backend currently supports these roles:
 | Value | Description |
 |---|---|
 | `admin` | Administrator with privileged management access |
-| `user` | Regular authenticated user with agency-level restrictions |
+| `user` | Regular authenticated user restricted to reports they uploaded |
 
 Public registration creates regular users. Administrator privileges are assigned through authorized user-management functionality.
 

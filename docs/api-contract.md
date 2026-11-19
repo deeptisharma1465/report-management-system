@@ -33,7 +33,7 @@ Access tokens expire according to the configured JWT expiration setting.
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
 | POST | `/api/agencies` | Admin | Create an agency |
-| GET | `/api/agencies` | Admin | List agencies |
+| GET | `/api/agencies` | Authenticated | List agencies |
 | PATCH | `/api/agencies/{agency_id}` | Admin | Update an agency |
 
 ## User Management Endpoints
@@ -48,9 +48,11 @@ Access tokens expire according to the configured JWT expiration setting.
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| POST | `/api/reports` | Authenticated, agency-restricted | Create a report in an accessible agency |
-| GET | `/api/reports` | Authenticated | List reports visible to the current user |
-| GET | `/api/reports/{report_id}` | Authenticated, agency-restricted | Get a report |
+| POST | `/api/reports` | Authenticated | Create a report for an existing agency |
+| GET | `/api/reports` | Authenticated | List the current user's reports; admins can list all |
+| GET | `/api/reports/{report_id}` | Authenticated | Get an owned report; admins can get any |
+| GET | `/api/reports/{report_id}/file` | Authenticated | Download an owned report; admins can download any |
+| GET | `/api/reports/{report_id}/preview` | Authenticated | Preview an owned report as PDF; admins can preview any |
 | PATCH | `/api/reports/{report_id}` | Admin | Update report metadata |
 | DELETE | `/api/reports/{report_id}` | Admin | Soft-delete a report |
 | POST | `/api/reports/{report_id}/versions` | Admin | Create report version metadata |
@@ -89,7 +91,10 @@ Example: `/api/audit-logs?limit=10&offset=0`
 ## Notes
 
 - Public registration creates regular users, not administrators.
-- Regular users are restricted to their assigned agency.
+- Registration does not assign an agency to the new user.
+- Regular users can list agencies and choose one when uploading a report.
+- Regular users can list, search, preview, and download only reports they uploaded.
 - Report deletion is a soft delete.
+- Office document previews require LibreOffice on the server; generated previews are cached.
 - Report version records store version metadata; this endpoint does not itself implement file storage or document processing.
 - Verify endpoint behavior against the running application when making future changes.

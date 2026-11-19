@@ -22,6 +22,8 @@ class ReportResponse(BaseModel):
     report_date: date
     agency_id: int
     uploaded_by: int
+    agency_name: str | None = None
+    uploader_name: str | None = None
     is_deleted: bool
 
     original_filename: str | None = None

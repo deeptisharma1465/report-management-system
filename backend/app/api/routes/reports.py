@@ -1,6 +1,9 @@
 
 from datetime import date
 from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 from uuid import uuid4
 
 from fastapi import (
@@ -14,10 +17,9 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import (
-    can_access_agency,
     get_current_user,
     require_admin,
 )
@@ -30,8 +32,16 @@ from app.schemas.report_version import (
 )
 from app.services.audit import record_audit
 
+from fastapi import BackgroundTasks            # add to the fastapi import
+from app.services.search_service import index_report_task
+
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
+
+
+def can_access_report(user: User, report: Report) -> bool:
+    """Admins can access any report; users only the ones they uploaded."""
+    return user.role == "admin" or report.uploaded_by == user.id
 
 
 
@@ -41,6 +51,20 @@ UPLOAD_DIR = Path(__file__).resolve().parents[3] / "uploads" / "reports"
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".pptx"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+PREVIEW_DIR = Path(__file__).resolve().parents[3] / "uploads" / "previews"
+
+
+def _find_soffice() -> str | None:
+    found = shutil.which("soffice") or shutil.which("libreoffice")
+    if found:
+        return found
+    for candidate in (
+        r"C:\Program Files\LibreOffice\program\soffice.exe",
+        r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+    ):
+        if Path(candidate).exists():
+            return candidate
+    return None
 
 
 @router.post(
@@ -49,6 +73,7 @@ MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
     status_code=status.HTTP_201_CREATED,
 )
 async def create_report(
+    background_tasks: BackgroundTasks, 
     title: str = Form(...),
     description: str | None = Form(None),
     report_type: str = Form(...),
@@ -58,12 +83,6 @@ async def create_report(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Report:
-
-    if not can_access_agency(current_user, agency_id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this agency.",
-        )
 
     agency = db.get(Agency, agency_id)
 
@@ -140,6 +159,7 @@ async def create_report(
 
         db.commit()
         db.refresh(report)
+        background_tasks.add_task(index_report_task, report.id)
 
         return report
 
@@ -159,12 +179,14 @@ def list_reports(
     db: Session = Depends(get_db),
 ) -> list[Report]:
 
-    query = select(Report).where(Report.is_deleted.is_(False))
+    query = (
+        select(Report)
+        .options(selectinload(Report.agency), selectinload(Report.uploader))
+        .where(Report.is_deleted.is_(False))
+    )
 
     if current_user.role != "admin":
-        query = query.where(
-            Report.agency_id == current_user.agency_id
-        )
+        query = query.where(Report.uploaded_by == current_user.id)
 
     query = query.order_by(Report.created_at.desc())
 
@@ -187,7 +209,7 @@ def get_report(
             detail="Report not found.",
         )
 
-    if not can_access_agency(current_user, report.agency_id):
+    if not can_access_report(current_user, report):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have access to this report.",
@@ -204,6 +226,7 @@ def get_report(
 def update_report(
     report_id: int,
     request: ReportUpdate,
+    background_tasks: BackgroundTasks, 
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> Report:
@@ -247,6 +270,8 @@ def update_report(
 
         db.commit()
         db.refresh(report)
+        if {"title", "description", "report_type"} & updates.keys():
+            background_tasks.add_task(index_report_task, report.id)
 
     return report
 
@@ -394,7 +419,7 @@ def download_report_file(
             detail="Report not found.",
         )
 
-    if not can_access_agency(current_user, report.agency_id):
+    if not can_access_report(current_user, report):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have access to this report.",
@@ -420,3 +445,84 @@ def download_report_file(
         filename=report.original_filename or report.stored_filename,
         media_type=report.content_type or "application/octet-stream",
     )
+
+
+# PREVIEW REPORT FILE (always returns a PDF)
+@router.get("/{report_id}/preview")
+def preview_report_file(
+    report_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    report = db.get(Report, report_id)
+
+    if report is None or report.is_deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found.",
+        )
+
+    if not can_access_report(current_user, report):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this report.",
+        )
+
+    if not report.file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No file is attached to this report.",
+        )
+
+    source = Path(__file__).resolve().parents[3] / report.file_path
+
+    if not source.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The stored file could not be found.",
+        )
+
+    if source.suffix.lower() == ".pdf":
+        return FileResponse(source, media_type="application/pdf")
+
+    cached = PREVIEW_DIR / f"{source.stem}.pdf"
+
+    if not cached.is_file():
+        soffice = _find_soffice()
+        if soffice is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Preview is unavailable: LibreOffice is not installed on the server.",
+            )
+
+        PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
+
+        with tempfile.TemporaryDirectory() as profile_dir:
+            try:
+                result = subprocess.run(
+                    [
+                        soffice,
+                        f"-env:UserInstallation={Path(profile_dir).as_uri()}",
+                        "--headless",
+                        "--convert-to",
+                        "pdf",
+                        "--outdir",
+                        str(PREVIEW_DIR),
+                        str(source),
+                    ],
+                    capture_output=True,
+                    timeout=120,
+                )
+            except subprocess.TimeoutExpired:
+                raise HTTPException(
+                    status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                    detail="Preview conversion timed out.",
+                )
+
+        if result.returncode != 0 or not cached.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not generate a preview for this file.",
+            )
+
+    return FileResponse(cached, media_type="application/pdf")

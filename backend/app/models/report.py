@@ -66,3 +66,11 @@ class Report(Base):
 
     agency: Mapped["Agency"] = relationship()
     uploader: Mapped["User"] = relationship()
+
+    @property
+    def agency_name(self) -> str | None:
+        return self.agency.name if self.agency else None
+
+    @property
+    def uploader_name(self) -> str | None:
+        return self.uploader.name if self.uploader else None

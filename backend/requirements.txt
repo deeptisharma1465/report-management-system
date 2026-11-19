@@ -10,3 +10,8 @@ pwdlib[argon2]
 PyJWT
 email-validator
 python-multipart
+sentence-transformers
+numpy 
+pypdf 
+python-docx 
+python-pptx

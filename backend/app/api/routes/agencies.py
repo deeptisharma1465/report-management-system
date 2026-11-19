@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import require_admin
+from app.api.dependencies import get_current_user, require_admin
 from app.db.session import get_db
 from app.models import Agency, User
 from app.schemas.agency import AgencyCreate, AgencyResponse, AgencyUpdate
@@ -50,10 +50,10 @@ def create_agency(
     return agency
 
 
-# LIST AGENCIES - ADMIN ONLY
+# LIST AGENCIES - ANY LOGGED-IN USER
 @router.get("", response_model=list[AgencyResponse])
 def list_agencies(
-    admin: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[Agency]:
     query = select(Agency).order_by(Agency.name)

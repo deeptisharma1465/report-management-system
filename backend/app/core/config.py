@@ -23,5 +23,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 30
 
+    #adding the embedding model name and search minimum score to the settings(2 new settings)
+    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    search_min_score: float = 0.25
+
 
 settings = Settings()

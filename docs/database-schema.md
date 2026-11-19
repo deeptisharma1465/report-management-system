@@ -18,7 +18,7 @@ Expected fields based on the backend model:
 - `email`: User's email address
 - `hashed_password`: Securely hashed password
 - `role`: User role, such as `admin` or `user`
-- `agency_id`: Agency assigned to the user; may be nullable for administrators
+- `agency_id`: Optional agency assignment; public registration leaves this null
 - `is_active`: Indicates whether the account is active
 
 ### 2. agencies

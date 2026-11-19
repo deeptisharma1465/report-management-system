@@ -3,6 +3,7 @@ from app.models.audit_log import AuditLog
 from app.models.report import Report
 from app.models.report_version import ReportVersion
 from app.models.user import User
+from app.models.report_chunk import ReportChunk  # noqa: F401
 
 __all__ = [
     "Agency",
